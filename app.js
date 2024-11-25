@@ -1,115 +1,109 @@
-//import express from 'express';
+// Importações necessárias
 const express = require('express');
-
-//import createClient from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
-//import {createClient} from '@supabase/supabase-js'
 const supabaseClient = require('@supabase/supabase-js');
-
-//import morgan from 'morgan';
 const morgan = require('morgan');
-
-//import bodyParser from "body-parser";
 const bodyParser = require('body-parser');
+const cors = require('cors');
 
-//import { createClient } from "https://cdn.skypack.dev/@supabase/supabase-js";
-
+// Inicializa o app Express
 const app = express();
 
-const cors=require("cors");
-const corsOptions ={
-   origin:'*', 
-   credentials:true,            //access-control-allow-credentials:true
-   optionSuccessStatus:200,
-}
+// Configurações de CORS
+const corsOptions = {
+   origin: '*',
+   credentials: true,
+   optionSuccessStatus: 200,
+};
+app.use(cors(corsOptions));
 
-app.use(cors(corsOptions)) // Use this after the variable declaration
-
-
-// using morgan for logs
+// Configuração de middlewares
 app.use(morgan('combined'));
-
-app.use(bodyParser.urlencoded({extended: true}));
+app.use(bodyParser.urlencoded({ extended: true }));
 app.use(bodyParser.json());
 
-const supabase = 
-    supabaseClient.createClient('https://rfnbtrcfebowskzyrlwv.supabase.co', 
-        'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbmJ0cmNmZWJvd3NrenlybHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NTM1MzIsImV4cCI6MjA0NjMyOTUzMn0.L0e_YC6hI2YS0S6VOr5LcPP5ER4YEbMpbL57gQMfnZk')
+// Inicializa o cliente Supabase
+const supabase = supabaseClient.createClient(
+    'https://rfnbtrcfebowskzyrlwv.supabase.co',
+    'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJmbmJ0cmNmZWJvd3NrenlybHd2Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3MzA3NTM1MzIsImV4cCI6MjA0NjMyOTUzMn0.L0e_YC6hI2YS0S6VOr5LcPP5ER4YEbMpbL57gQMfnZk'
+);
 
+// Endpoints do CRUD
 
+// 1. Listar todos os produtos (GET /products)
 app.get('/products', async (req, res) => {
-    const {data, error} = await supabase
-        .from('products')
-        .select()
-    res.send(data);
-    console.log(`lists all products${data}`);
+    try {
+        const { data, error } = await supabase.from('products').select();
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(500).json({ error: error.message });
+    }
 });
 
+// 2. Consultar um produto por ID (GET /products/:id)
 app.get('/products/:id', async (req, res) => {
-    console.log("id = " + req.params.id);
-    const {data, error} = await supabase
-        .from('products')
-        .select()
-        .eq('id', req.params.id)
-    res.send(data);
-
-    console.log("retorno "+ data);
+    try {
+        const { data, error } = await supabase
+            .from('products')
+            .select()
+            .eq('id', req.params.id)
+            .single(); // Retorna apenas um registro
+        if (error) throw error;
+        res.status(200).json(data);
+    } catch (error) {
+        res.status(404).json({ error: 'Product not found' });
+    }
 });
 
+// 3. Criar um novo produto (POST /products)
 app.post('/products', async (req, res) => {
-    const {error} = await supabase
-        .from('products')
-        .insert({
-            name: req.body.name,
-            description: req.body.description,
-            price: req.body.price,
-        })
-    if (error) {
-        res.send(error);
+    try {
+        const { name, description, price } = req.body;
+        const { error } = await supabase.from('products').insert({ name, description, price });
+        if (error) throw error;
+        res.status(201).send('Product created successfully!');
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
-    res.send("created!!");
-    console.log("retorno "+ req.body.name);
-    console.log("retorno "+ req.body.description);
-    console.log("retorno "+ req.body.price);
-
 });
 
+// 4. Atualizar um produto por ID (PUT /products/:id)
 app.put('/products/:id', async (req, res) => {
-    const {error} = await supabase
-        .from('products')
-        .update({
-            name: req.body.name,
-            description: req.body.description,
-            price: req.body.price
-        })
-        .eq('id', req.params.id)
-    if (error) {
-        res.send(error);
+    try {
+        const { name, description, price } = req.body;
+        const { error } = await supabase
+            .from('products')
+            .update({ name, description, price })
+            .eq('id', req.params.id);
+        if (error) throw error;
+        res.status(200).send('Product updated successfully!');
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
-    res.send("updated!!");
 });
 
+// 5. Deletar um produto por ID (DELETE /products/:id)
 app.delete('/products/:id', async (req, res) => {
-    console.log("delete: " + req.params.id);
-    const {error} = await supabase
-        .from('products')
-        .delete()
-        .eq('id', req.params.id)
-    if (error) {
-        res.send(error);
+    try {
+        const { error } = await supabase.from('products').delete().eq('id', req.params.id);
+        if (error) throw error;
+        res.status(200).send('Product deleted successfully!');
+    } catch (error) {
+        res.status(400).json({ error: error.message });
     }
-    res.send("deleted!!")
-    console.log("delete: " + req.params.id);
-
 });
 
+// Rota raiz para verificar o funcionamento do servidor
 app.get('/', (req, res) => {
-    res.send("Hello I am working my friend Supabase <3");
+    res.send('Welcome to the Supabase CRUD API!');
 });
 
+// Rota para lidar com endpoints não encontrados
 app.get('*', (req, res) => {
-    res.send("Hello again I am working my friend to the moon and behind <3");
+    res.status(404).send('Route not found');
 });
 
+// Inicia o servidor na porta 3000
 app.listen(3000, () => {
-    console.log(`> Ready on http://localhost:3000`);
+    console.log(`> Server is running on http://localhost:3000`);
 });
